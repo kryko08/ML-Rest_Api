@@ -1,6 +1,6 @@
 from dataclasses import fields
 from rest_framework import serializers
-from .models import Algorithm, AlgorithmRequest
+from .models import AlgorithmRequest
 from django.contrib.auth.models import User
 
 
@@ -8,10 +8,16 @@ from django.contrib.auth.models import User
 class AlgorithmRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlgorithmRequest
-        fields = [ "algorithm", 
-                   "input_image",
+        fields = [ "request",
                    "response",
+                   "requested_at"
                 ]
+        read_only_fiels = "requested_at"
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super(AlgorithmRequest, self).create(validated_data)
+
 
 # Users serializers 
 class UserSerializer(serializers.ModelSerializer):
