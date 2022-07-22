@@ -6,4 +6,4 @@ class ModelapiConfig(AppConfig):
     name = 'ModelApi'
 
     # Load Model here
-    ML_MODEL = NTSNetPredictor
+    predictor = NTSNetPredictor
