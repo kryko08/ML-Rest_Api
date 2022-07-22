@@ -14,5 +14,5 @@ now = datetime.now()
 class AlgorithmRequest(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
-    model_input = models.CharField(max_length=200)
+    request_message = models.CharField(max_length=200)
     response = models.CharField(max_length=150)
