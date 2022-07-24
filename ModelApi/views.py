@@ -1,66 +1,84 @@
-from urllib import response
-from django.shortcuts import get_object_or_404
+from django.contrib.auth.models import User
 
 from rest_framework.generics import (CreateAPIView,
                                      ListAPIView, 
                                      RetrieveAPIView,
+                                     DestroyAPIView,
+                                     GenericAPIView
                                     )
 
-from rest_framework.mixins import (CreateModelMixin,
+from rest_framework.mixins import (ListModelMixin,
+                                   RetrieveModelMixin,
+                                   CreateModelMixin
                                   )
 
-from rest_framework.views import APIView
 
 from .models import AlgorithmRequest
-from .serializers import AlgorithmRequestSerializer
 
-from .serializers import UserDetailSerializer, UserSerializer
 from django.contrib.auth.models import User
-
-from rest_framework.decorators import api_view
 
 from .apps import ModelapiConfig
 
-from rest_framework.response import Response
+from.serializers import (
+    AlgorithmRequestListSerializer,
+    AlgorithmRequestDetailSerializer,
+    UserRequestsListSerializer,
+    UserSerializer,
+    UserDetailSerializer,
+
+    )
 
 
 
 # Request to Algorithm view
-@api_view(["GET", "POST"])
-def request_model_view(request, pk=None, *args, **kwargs):
-    # If HTTP method is "POST", run model inference and show results
-    if request.method == "POST":
-        serializer = AlgorithmRequestSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            # Run inference
-            validated_data = serializer.validated_data
-            message = validated_data["request_message"]
-            model_output = ModelapiConfig.predictor.translate(message)
-            serializer.save(response=model_output)
-        else:
-            return Response()
+class AlgoRequestMixinView(
+    RetrieveModelMixin,
+    ListModelMixin, 
+    CreateModelMixin,
+    GenericAPIView
+    ):
 
-    # If HTTP method is "Get", view all previous algorithm requests
-    elif request.method == "GET":
-        # Detail view 
-        if pk is not None:
-            obj = get_object_or_404(AlgorithmRequest, pk=pk)
-            data = AlgorithmRequestSerializer(obj, many=False).data
-            return Response(data)
-        # List view
-        queryset = AlgorithmRequest.objects.all()
-        data = AlgorithmRequestSerializer(queryset, many=True).data
-        return Response(data)
-
-
-
-# View for listing all requests 
-class RequestListView(ListAPIView):
     queryset = AlgorithmRequest.objects.all()
-    serializer_class = AlgorithmRequestSerializer
+    serializer_class = AlgorithmRequestListSerializer
+    lookup_field = "pk"
+
+    def get(self, request, *args, **kwargs):
+        pk = kwargs.get("pk")
+        if pk is not None:
+            return self.retrieve(request, *args, **kwargs)
+        return self.list(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        request_message = serializer.validated_data.get("request_message")
+        pretiction = ModelapiConfig.predictor.translate(request_message)
+        serializer.save(user=user, response=pretiction)
+
+        
+class AlgoRequestDetailView(RetrieveAPIView):
+    queryset = AlgorithmRequest.objects.all()
+    serializer_class = AlgorithmRequestDetailSerializer
+    lookup_field = "pk"
     
 
-# User views 
+# User views--------
+# List all Algorithm request for given user
+class UserPredictionListView(ListAPIView):
+    queryset = AlgorithmRequest.objects.all()
+    serializer_class = UserRequestsListSerializer
+    lookup_field = "pk"
+
+    def get_queryset(self, *args, **kwargs):
+        qs = super().get_queryset()
+        user_pk = self.kwargs["pk"]
+        print(user_pk)
+        filtered_qs = qs.filter(user=user_pk)
+        return filtered_qs
+
+
 class ListUserView(ListAPIView):
     """
     API endpoint that allows users to be viewed
@@ -68,9 +86,11 @@ class ListUserView(ListAPIView):
     queryset = User.objects.all()
     serializer_class = UserSerializer 
 
+
 class UserDetailView(RetrieveAPIView):
     """
     API indpoint to retrieve single user
     """
     queryset = User.objects.all()
     serializer_class = UserDetailSerializer
+    
