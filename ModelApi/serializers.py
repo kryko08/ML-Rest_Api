@@ -31,6 +31,9 @@ class AlgorithmRequestDetailSerializer(serializers.ModelSerializer):
             "response",
             "requested"
         ]
+        read_only_fields = [
+            "response"
+        ]
 
 
 class UserRequestsListSerializer(serializers.ModelSerializer):
