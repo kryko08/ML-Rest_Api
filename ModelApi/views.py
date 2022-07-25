@@ -1,13 +1,14 @@
 from django.contrib.auth.models import User
 
-from rest_framework.generics import (CreateAPIView,
+from rest_framework.generics import (
                                      ListAPIView, 
                                      RetrieveAPIView,
-                                     DestroyAPIView,
-                                     GenericAPIView
+                                     GenericAPIView,
+                                     RetrieveUpdateAPIView
                                     )
 
-from rest_framework.mixins import (ListModelMixin,
+from rest_framework.mixins import (
+                                   ListModelMixin,
                                    RetrieveModelMixin,
                                    CreateModelMixin
                                   )
@@ -28,9 +29,15 @@ from.serializers import (
 
     )
 
+from rest_framework.permissions import (
+    IsAdminUser,
+    IsAuthenticated,
+    IsAuthenticatedOrReadOnly
+)
+
+from .permissions import IsRequestOwnerOrAdmin
 
 
-# Request to Algorithm view
 class AlgoRequestMixinView(
     RetrieveModelMixin,
     ListModelMixin, 
@@ -41,6 +48,7 @@ class AlgoRequestMixinView(
     queryset = AlgorithmRequest.objects.all()
     serializer_class = AlgorithmRequestListSerializer
     lookup_field = "pk"
+    permission_classes = [IsAuthenticatedOrReadOnly]
 
     def get(self, request, *args, **kwargs):
         pk = kwargs.get("pk")
@@ -58,18 +66,25 @@ class AlgoRequestMixinView(
         serializer.save(user=user, response=pretiction)
 
         
-class AlgoRequestDetailView(RetrieveAPIView):
+class AlgoRequestDetailView(RetrieveUpdateAPIView):
     queryset = AlgorithmRequest.objects.all()
     serializer_class = AlgorithmRequestDetailSerializer
     lookup_field = "pk"
-    
+    permission_classes = [IsRequestOwnerOrAdmin]
 
-# User views--------
-# List all Algorithm request for given user
+    def perform_update(self, serializer):
+        data = serializer.validated_data
+        message = data["request_message"]
+        translation = ModelapiConfig.predictor.translate(message)
+        instance = serializer.save(response=translation)
+
+    
+# User views
 class UserPredictionListView(ListAPIView):
     queryset = AlgorithmRequest.objects.all()
     serializer_class = UserRequestsListSerializer
     lookup_field = "pk"
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self, *args, **kwargs):
         qs = super().get_queryset()
@@ -85,6 +100,7 @@ class ListUserView(ListAPIView):
     """
     queryset = User.objects.all()
     serializer_class = UserSerializer 
+    permission_classes = [IsAuthenticated]
 
 
 class UserDetailView(RetrieveAPIView):
@@ -93,4 +109,6 @@ class UserDetailView(RetrieveAPIView):
     """
     queryset = User.objects.all()
     serializer_class = UserDetailSerializer
+    permission_classes = [IsAdminUser]
+
     
