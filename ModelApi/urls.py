@@ -14,5 +14,4 @@ urlpatterns = [
     # Request machine learning model prediction 
     path("predict/", AlgoRequestMixinView.as_view()),
     path("predict/<int:pk>/detail/", AlgoRequestDetailView.as_view(), name="algorithmrequest-detail"),
-    # Predictions views 
 ]
